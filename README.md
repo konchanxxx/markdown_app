@@ -1,24 +1,89 @@
-# README
+# Summary
 
-This README would normally document whatever steps are necessary to get the
-application up and running.
+## Configuration
 
-Things you may want to cover:
+`config/initializers/markdown_parser.rb`
 
-* Ruby version
+```ruby
+MarkdownParser.configure do |config|
+  config.autolink            = true
+  config.space_after_headers = true
+  config.no_intra_emphasis   = true
+  config.fenced_code_blocks  = true
+  config.tables              = true
+  config.hard_wrap           = true
+  config.lax_html_blocks     = true
+  config.strikethorough      = true
+end
+```
 
-* System dependencies
+You can call this method and parse HTML.
 
-* Configuration
+```ruby
+MarkdownParser.instance.parse(text)
+```
 
-* Database creation
+`e.g. Parser`
 
-* Database initialization
+```ruby
+require 'singleton'
+require 'rouge'
+require 'rouge/plugins/redcarpet'
 
-* How to run the test suite
+class MarkdownParser
+  include Singleton
 
-* Services (job queues, cache servers, search engines, etc.)
+  def parse(text)
+    md_client.render(text).html_safe
+  end
 
-* Deployment instructions
+  private
 
-* ...
+  def md_client
+    @_md_client ||= Redcarpet::Markdown.new(Render, md_options)
+  end
+
+  def md_options
+    valid_options.each_with_object({}) do |key, result|
+      result[key.to_sym] = config.send(key)
+    end
+  end
+
+  def config
+    self.class.config
+  end
+
+  def valid_options
+    config.class::VALID_OPTIONS
+  end
+
+  class << self
+    def configure
+      yield config
+    end
+
+    def config
+      @_config ||= Config.new
+    end
+  end
+
+  class Render < Redcarpet::Render::HTML
+    include Rouge::Plugins::Redcarpet
+  end
+
+  class Config
+    VALID_OPTIONS = %i[
+      autolink
+      space_after_headers
+      no_intra_emphasis
+      fenced_code_blocks
+      tables
+      hard_wrap
+      lax_html_blocks
+      strikethorough
+    ].freeze
+
+    attr_accessor *VALID_OPTIONS
+  end
+end
+```
